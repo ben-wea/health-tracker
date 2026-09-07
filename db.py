@@ -1,52 +1,111 @@
+import os
 import sqlite3
 
+USE_POSTGRES = bool(os.getenv("DATABASE_URL"))
 DATABASE = "health_tracker.db"
+
+if USE_POSTGRES:
+    import psycopg
+    from psycopg.rows import dict_row
+
+# Postgres uses %s placeholders; SQLite uses ?.
+PH = "%s" if USE_POSTGRES else "?"
 
 
 def get_connection():
-    """Open a connection to the SQLite database."""
+    """Open a connection to whichever database this environment uses."""
+    if USE_POSTGRES:
+        return psycopg.connect(os.environ["DATABASE_URL"], row_factory=dict_row)
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
-def init_db():
-    """Create the database tables by running schema.sql."""
-    with open("schema.sql", "r") as f:
-        schema = f.read()
+def run_query(sql, params=(), fetch=None):
+    """Execute a statement against either backend.
+
+    fetch: None for writes, 'one' for a single row, 'all' for a list.
+    """
     conn = get_connection()
-    conn.executescript(schema)
-    conn.commit()
-    conn.close()
-    print(f"Initialized {DATABASE}")
+    result = None
+    try:
+        if USE_POSTGRES:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                if fetch == "one":
+                    result = cur.fetchone()
+                elif fetch == "all":
+                    result = cur.fetchall()
+        else:
+            cur = conn.execute(sql, params)
+            if fetch == "one":
+                result = cur.fetchone()
+            elif fetch == "all":
+                result = cur.fetchall()
+        conn.commit()
+    finally:
+        conn.close()
+    return result
+
+
+def init_db():
+    """Create tables if they do not already exist."""
+    filename = "schema_pg.sql" if USE_POSTGRES else "schema.sql"
+    with open(filename, "r") as f:
+        schema = f.read()
+
+    conn = get_connection()
+    try:
+        if USE_POSTGRES:
+            with conn.cursor() as cur:
+                cur.execute(schema)
+        else:
+            conn.executescript(schema)
+        conn.commit()
+    finally:
+        conn.close()
+    print(f"Initialized using {filename}")
+
+
+def reset_db():
+    """Drop all tables and recreate them. Destructive."""
+    conn = get_connection()
+    try:
+        statements = "DROP TABLE IF EXISTS meal_entries; DROP TABLE IF EXISTS workouts;"
+        if USE_POSTGRES:
+            with conn.cursor() as cur:
+                cur.execute(statements)
+        else:
+            conn.executescript(statements)
+        conn.commit()
+    finally:
+        conn.close()
+    init_db()
+    print("Reset complete.")
 
 
 def add_meal_entry(log_date, meal_type, fdc_id, description, quantity_g,
                    calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g):
     """Insert one logged food item. Returns the new row's id."""
-    conn = get_connection()
-    cursor = conn.execute(
-        """
+    sql = f"""
         INSERT INTO meal_entries
             (log_date, meal_type, fdc_id, description, quantity_g,
              calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
+        VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH})
+        RETURNING id
+    """
+    row = run_query(
+        sql,
         (log_date, meal_type, fdc_id, description, quantity_g,
          calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g),
+        fetch="one",
     )
-    conn.commit()
-    new_id = cursor.lastrowid
-    conn.close()
-    return new_id
+    return row["id"]
 
 
 def get_meal_entries(log_date):
     """Return all meal entries for a date, with consumed amounts computed."""
-    conn = get_connection()
-    rows = conn.execute(
-        """
+    sql = f"""
         SELECT
             id,
             meal_type,
@@ -57,7 +116,7 @@ def get_meal_entries(log_date):
             carbs_per_100g    * quantity_g / 100 AS carbs,
             fat_per_100g      * quantity_g / 100 AS fat
         FROM meal_entries
-        WHERE log_date = ?
+        WHERE log_date = {PH}
         ORDER BY
             CASE meal_type
                 WHEN 'breakfast' THEN 1
@@ -66,44 +125,27 @@ def get_meal_entries(log_date):
                 WHEN 'snack'     THEN 4
             END,
             created_at
-        """,
-        (log_date,),
-    ).fetchall()
-    conn.close()
-    return rows
+    """
+    return run_query(sql, (log_date,), fetch="all")
 
 
 def get_daily_totals(log_date):
     """Return summed calories and macros for a date."""
-    conn = get_connection()
-    row = conn.execute(
-        """
+    sql = f"""
         SELECT
             COALESCE(SUM(calories_per_100g * quantity_g / 100), 0) AS calories,
             COALESCE(SUM(protein_per_100g  * quantity_g / 100), 0) AS protein,
             COALESCE(SUM(carbs_per_100g    * quantity_g / 100), 0) AS carbs,
             COALESCE(SUM(fat_per_100g      * quantity_g / 100), 0) AS fat
         FROM meal_entries
-        WHERE log_date = ?
-        """,
-        (log_date,),
-    ).fetchone()
-    conn.close()
-    return row
+        WHERE log_date = {PH}
+    """
+    return run_query(sql, (log_date,), fetch="one")
 
-
-def delete_meal_entry(entry_id):
-    """Delete one meal entry by id."""
-    conn = get_connection()
-    conn.execute("DELETE FROM meal_entries WHERE id = ?", (entry_id,))
-    conn.commit()
-    conn.close()
 
 def get_daily_summaries(days=7):
     """Return per-day totals for the most recent `days` dates that have entries."""
-    conn = get_connection()
-    rows = conn.execute(
-        """
+    sql = f"""
         SELECT
             log_date,
             COUNT(*)                                   AS entry_count,
@@ -114,18 +156,11 @@ def get_daily_summaries(days=7):
         FROM meal_entries
         GROUP BY log_date
         ORDER BY log_date DESC
-        LIMIT ?
-        """,
-        (days,),
-    ).fetchall()
-    conn.close()
-    return rows
+        LIMIT {PH}
+    """
+    return run_query(sql, (days,), fetch="all")
 
-def reset_db():
-    """Drop all tables and recreate them. Destructive."""
-    conn = get_connection()
-    conn.executescript("DROP TABLE IF EXISTS meal_entries; DROP TABLE IF EXISTS workouts;")
-    conn.commit()
-    conn.close()
-    init_db()
-    print("Reset complete.")
+
+def delete_meal_entry(entry_id):
+    """Delete one meal entry by id."""
+    run_query(f"DELETE FROM meal_entries WHERE id = {PH}", (entry_id,))
