@@ -1,3 +1,10 @@
+CREATE TABLE IF NOT EXISTS users (
+    id            SERIAL PRIMARY KEY,
+    username      TEXT      NOT NULL UNIQUE,
+    password_hash TEXT      NOT NULL,
+    created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS meal_entries (
     id                SERIAL PRIMARY KEY,
     user_id           INTEGER NOT NULL REFERENCES users(id),
@@ -31,9 +38,3 @@ CREATE INDEX IF NOT EXISTS idx_workouts_date     ON workouts(log_date);
 CREATE INDEX IF NOT EXISTS idx_meal_entries_user ON meal_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_workouts_user     ON workouts(user_id);
 
-CREATE TABLE IF NOT EXISTS users (
-    id            SERIAL PRIMARY KEY,
-    username      TEXT      NOT NULL UNIQUE,
-    password_hash TEXT      NOT NULL,
-    created_at    TIMESTAMP NOT NULL DEFAULT NOW()
-);
