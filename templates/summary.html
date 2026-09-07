@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Summary &middot; Health Tracker{% endblock %}
+
+{% block content %}
+<section class="totals">
+  <h2>Last {{ days }} days with entries</h2>
+  <ul class="macros">
+    <li><span class="value">{{ "%.0f"|format(avg["calories"]) }}</span><span class="label">avg kcal</span></li>
+    <li><span class="value">{{ "%.1f"|format(avg["protein"]) }}</span><span class="label">avg protein</span></li>
+    <li><span class="value">{{ "%.1f"|format(avg["carbs"]) }}</span><span class="label">avg carbs</span></li>
+    <li><span class="value">{{ "%.1f"|format(avg["fat"]) }}</span><span class="label">avg fat</span></li>
+  </ul>
+</section>
+
+{% if summaries %}
+<table>
+  <thead>
+    <tr>
+      <th>Date</th><th>Items</th><th>kcal</th><th>P</th><th>C</th><th>F</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in summaries %}
+      <tr>
+        <td><a href="{{ url_for('index', date=row['log_date']) }}">{{ row["log_date"] }}</a></td>
+        <td>{{ row["entry_count"] }}</td>
+        <td>{{ "%.0f"|format(row["calories"]) }}</td>
+        <td>{{ "%.1f"|format(row["protein"]) }}</td>
+        <td>{{ "%.1f"|format(row["carbs"]) }}</td>
+        <td>{{ "%.1f"|format(row["fat"]) }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No entries logged yet.</p>
+{% endif %}
+{% endblock %}

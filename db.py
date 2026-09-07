@@ -98,3 +98,25 @@ def delete_meal_entry(entry_id):
     conn.execute("DELETE FROM meal_entries WHERE id = ?", (entry_id,))
     conn.commit()
     conn.close()
+
+def get_daily_summaries(days=7):
+    """Return per-day totals for the most recent `days` dates that have entries."""
+    conn = get_connection()
+    rows = conn.execute(
+        """
+        SELECT
+            log_date,
+            COUNT(*)                                   AS entry_count,
+            SUM(calories_per_100g * quantity_g / 100)  AS calories,
+            SUM(protein_per_100g  * quantity_g / 100)  AS protein,
+            SUM(carbs_per_100g    * quantity_g / 100)  AS carbs,
+            SUM(fat_per_100g      * quantity_g / 100)  AS fat
+        FROM meal_entries
+        GROUP BY log_date
+        ORDER BY log_date DESC
+        LIMIT ?
+        """,
+        (days,),
+    ).fetchall()
+    conn.close()
+    return rows

@@ -76,6 +76,21 @@ def delete_entry(entry_id):
     flash("Entry deleted.", "success")
     return redirect(url_for("index", date=log_date))
 
+@app.route("/summary")
+def summary():
+    days = request.args.get("days", 7, type=int)
+    days = max(1, min(days, 30))
+    summaries = db.get_daily_summaries(days)
+
+    if summaries:
+        avg = {
+            key: sum(row[key] for row in summaries) / len(summaries)
+            for key in ("calories", "protein", "carbs", "fat")
+        }
+    else:
+        avg = {"calories": 0, "protein": 0, "carbs": 0, "fat": 0}
+
+    return render_template("summary.html", summaries=summaries, avg=avg, days=days)
 
 if __name__ == "__main__":
     app.run(debug=True)

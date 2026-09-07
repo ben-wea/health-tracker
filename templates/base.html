@@ -10,7 +10,9 @@
   <header>
     <h1>Health Tracker</h1>
     <nav>
-      <a href="{{ url_for('index') }}">Today</a>    </nav>
+      <a href="{{ url_for('index') }}">Today</a>   
+      <a href="{{ url_for('summary') }}">Summary</a> 
+    </nav>
   </header>
   <main>
     {% with messages = get_flashed_messages(with_categories=true) %}
