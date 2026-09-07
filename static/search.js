@@ -81,3 +81,9 @@ function selectFood(food) {
   resultsList.innerHTML = "";
   statusLine.textContent = "";
 }
+
+addForm.addEventListener("submit", () => {
+  const button = addForm.querySelector("button[type=submit]");
+  button.disabled = true;
+  button.textContent = "Adding\u2026";
+});

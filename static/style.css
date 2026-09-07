@@ -290,3 +290,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .auth a { color: var(--summary); }
 .logout-form { display: inline; }
 .logout-form .pill { background: none; cursor: pointer; font-family: inherit; }
+
+.form-row button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
