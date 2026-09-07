@@ -1,7 +1,85 @@
 {% extends "base.html" %}
 
-{% block title %}Today &middot; Health Tracker{% endblock %}
+{% block title %}{{ log_date }} &middot; Health Tracker{% endblock %}
 
 {% block content %}
-  <p>Nothing logged yet.</p>
+<section class="totals">
+  <h2>{{ log_date }}</h2>
+  <ul class="macros">
+    <li><span class="value">{{ "%.0f"|format(totals["calories"]) }}</span><span class="label">kcal</span></li>
+    <li><span class="value">{{ "%.1f"|format(totals["protein"]) }}</span><span class="label">protein</span></li>
+    <li><span class="value">{{ "%.1f"|format(totals["carbs"]) }}</span><span class="label">carbs</span></li>
+    <li><span class="value">{{ "%.1f"|format(totals["fat"]) }}</span><span class="label">fat</span></li>
+  </ul>
+</section>
+
+<section class="add-food">
+  <h2>Log a food</h2>
+  <input type="text" id="food-search" placeholder="Search foods, e.g. banana" autocomplete="off">
+  <p id="search-status" class="muted"></p>
+  <ul id="search-results"></ul>
+
+  <form id="add-form" method="post" action="{{ url_for('add_entry') }}" hidden>
+    <input type="hidden" name="log_date" value="{{ log_date }}">
+    <input type="hidden" name="fdc_id" id="f-fdc-id">
+    <input type="hidden" name="description" id="f-description">
+    <input type="hidden" name="calories_per_100g" id="f-calories">
+    <input type="hidden" name="protein_per_100g" id="f-protein">
+    <input type="hidden" name="carbs_per_100g" id="f-carbs">
+    <input type="hidden" name="fat_per_100g" id="f-fat">
+
+    <p class="selected">Selected: <strong id="selected-name"></strong></p>
+    <div class="form-row">
+      <label>Grams
+        <input type="number" name="quantity_g" value="100" min="0.1" step="0.1" required>
+      </label>
+      <label>Meal
+        <select name="meal_type">
+          {% for meal in meal_types %}
+            <option value="{{ meal }}">{{ meal }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit">Add</button>
+    </div>
+  </form>
+</section>
+
+{% for meal in meal_types %}
+<section class="meal">
+  <h3>{{ meal }}</h3>
+  {% if entries_by_meal[meal] %}
+    <table>
+      <thead>
+        <tr>
+          <th>Food</th><th>Grams</th><th>kcal</th>
+          <th>P</th><th>C</th><th>F</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries_by_meal[meal] %}
+          <tr>
+            <td>{{ entry["description"] }}</td>
+            <td>{{ "%.0f"|format(entry["quantity_g"]) }}</td>
+            <td>{{ "%.0f"|format(entry["calories"]) }}</td>
+            <td>{{ "%.1f"|format(entry["protein"]) }}</td>
+            <td>{{ "%.1f"|format(entry["carbs"]) }}</td>
+            <td>{{ "%.1f"|format(entry["fat"]) }}</td>
+            <td>
+              <form method="post" action="{{ url_for('delete_entry', entry_id=entry['id']) }}">
+                <input type="hidden" name="log_date" value="{{ log_date }}">
+                <button type="submit" class="link-button">remove</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">Nothing logged.</p>
+  {% endif %}
+</section>
+{% endfor %}
+
+<script src="{{ url_for('static', filename='search.js') }}"></script>
 {% endblock %}
