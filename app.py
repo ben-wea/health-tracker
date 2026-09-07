@@ -114,7 +114,7 @@ def add_entry():
     log_date = request.form.get("log_date") or date.today().isoformat()
     try:
         db.add_meal_entry(
-            current_user_id()
+            current_user_id(),
             log_date=log_date,
             meal_type=request.form["meal_type"],
             fdc_id=request.form.get("fdc_id") or None,
