@@ -120,3 +120,12 @@ def get_daily_summaries(days=7):
     ).fetchall()
     conn.close()
     return rows
+
+def reset_db():
+    """Drop all tables and recreate them. Destructive."""
+    conn = get_connection()
+    conn.executescript("DROP TABLE IF EXISTS meal_entries; DROP TABLE IF EXISTS workouts;")
+    conn.commit()
+    conn.close()
+    init_db()
+    print("Reset complete.")

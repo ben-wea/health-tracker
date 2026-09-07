@@ -2,10 +2,9 @@
 -- Nutrition values are stored per 100g as returned by the USDA API.
 -- Actual consumed amounts are computed at query time from quantity_g.
 
-DROP TABLE IF EXISTS meal_entries;
-DROP TABLE IF EXISTS workouts;
 
-CREATE TABLE meal_entries (
+
+CREATE TABLE IF NOT EXISTS meal_entries (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     log_date          TEXT    NOT NULL,
     meal_type         TEXT    NOT NULL CHECK (meal_type IN ('breakfast','lunch','dinner','snack')),
@@ -19,7 +18,7 @@ CREATE TABLE meal_entries (
     created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE TABLE workouts (
+CREATE TABLE IF NOT EXISTS workouts (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     log_date     TEXT    NOT NULL,
     exercise     TEXT    NOT NULL,
@@ -31,5 +30,5 @@ CREATE TABLE workouts (
     created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE INDEX idx_meal_entries_date ON meal_entries(log_date);
-CREATE INDEX idx_workouts_date     ON workouts(log_date);
+CREATE INDEX IF NOT EXISTS idx_meal_entries_date ON meal_entries(log_date);
+CREATE INDEX IF NOT EXISTS idx_workouts_date     ON workouts(log_date);

@@ -12,6 +12,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-only-insecure-key")
+db.init_db()
 
 MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"]
 
