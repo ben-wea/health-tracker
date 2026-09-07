@@ -6,6 +6,7 @@
 
 CREATE TABLE IF NOT EXISTS meal_entries (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL REFERENCES users(id),
     log_date          TEXT    NOT NULL,
     meal_type         TEXT    NOT NULL CHECK (meal_type IN ('breakfast','lunch','dinner','snack')),
     fdc_id            INTEGER,
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS meal_entries (
 
 CREATE TABLE IF NOT EXISTS workouts (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL REFERENCES users(id),
     log_date     TEXT    NOT NULL,
     exercise     TEXT    NOT NULL,
     sets         INTEGER,
@@ -32,3 +34,12 @@ CREATE TABLE IF NOT EXISTS workouts (
 
 CREATE INDEX IF NOT EXISTS idx_meal_entries_date ON meal_entries(log_date);
 CREATE INDEX IF NOT EXISTS idx_workouts_date     ON workouts(log_date);
+CREATE INDEX IF NOT EXISTS idx_meal_entries_user ON meal_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_workouts_user     ON workouts(user_id);
+
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
