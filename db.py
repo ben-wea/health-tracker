@@ -84,27 +84,27 @@ def reset_db():
     print("Reset complete.")
 
 
-def add_meal_entry(log_date, meal_type, fdc_id, description, quantity_g,
+def add_meal_entry(user_id, log_date, meal_type, fdc_id, description, quantity_g,
                    calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g):
-    """Insert one logged food item. Returns the new row's id."""
+    """Insert one logged food item for a user. Returns the new row's id."""
     sql = f"""
         INSERT INTO meal_entries
-            (log_date, meal_type, fdc_id, description, quantity_g,
+            (user_id, log_date, meal_type, fdc_id, description, quantity_g,
              calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g)
-        VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH})
+        VALUES ({PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH}, {PH})
         RETURNING id
     """
     row = run_query(
         sql,
-        (log_date, meal_type, fdc_id, description, quantity_g,
+        (user_id, log_date, meal_type, fdc_id, description, quantity_g,
          calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g),
         fetch="one",
     )
     return row["id"]
 
 
-def get_meal_entries(log_date):
-    """Return all meal entries for a date, with consumed amounts computed."""
+def get_meal_entries(user_id, log_date):
+    """Return all meal entries for a user on a date, with consumed amounts computed."""
     sql = f"""
         SELECT
             id,
@@ -116,7 +116,7 @@ def get_meal_entries(log_date):
             carbs_per_100g    * quantity_g / 100 AS carbs,
             fat_per_100g      * quantity_g / 100 AS fat
         FROM meal_entries
-        WHERE log_date = {PH}
+        WHERE user_id = {PH} AND log_date = {PH}
         ORDER BY
             CASE meal_type
                 WHEN 'breakfast' THEN 1
@@ -126,11 +126,11 @@ def get_meal_entries(log_date):
             END,
             created_at
     """
-    return run_query(sql, (log_date,), fetch="all")
+    return run_query(sql, (user_id, log_date), fetch="all")
 
 
-def get_daily_totals(log_date):
-    """Return summed calories and macros for a date."""
+def get_daily_totals(user_id, log_date):
+    """Return summed calories and macros for a user on a date."""
     sql = f"""
         SELECT
             COALESCE(SUM(calories_per_100g * quantity_g / 100), 0) AS calories,
@@ -138,13 +138,13 @@ def get_daily_totals(log_date):
             COALESCE(SUM(carbs_per_100g    * quantity_g / 100), 0) AS carbs,
             COALESCE(SUM(fat_per_100g      * quantity_g / 100), 0) AS fat
         FROM meal_entries
-        WHERE log_date = {PH}
+        WHERE user_id = {PH} AND log_date = {PH}
     """
-    return run_query(sql, (log_date,), fetch="one")
+    return run_query(sql, (user_id, log_date), fetch="one")
 
 
-def get_daily_summaries(days=7):
-    """Return per-day totals for the most recent `days` dates that have entries."""
+def get_daily_summaries(user_id, days=7):
+    """Return per-day totals for a user's most recent `days` dates with entries."""
     sql = f"""
         SELECT
             log_date,
@@ -154,13 +154,32 @@ def get_daily_summaries(days=7):
             SUM(carbs_per_100g    * quantity_g / 100)  AS carbs,
             SUM(fat_per_100g      * quantity_g / 100)  AS fat
         FROM meal_entries
+        WHERE user_id = {PH}
         GROUP BY log_date
         ORDER BY log_date DESC
         LIMIT {PH}
     """
-    return run_query(sql, (days,), fetch="all")
+    return run_query(sql, (user_id, days), fetch="all")
 
 
-def delete_meal_entry(entry_id):
-    """Delete one meal entry by id."""
-    run_query(f"DELETE FROM meal_entries WHERE id = {PH}", (entry_id,))
+def delete_meal_entry(user_id, entry_id):
+    """Delete one meal entry, but only if it belongs to this user."""
+    sql = f"DELETE FROM meal_entries WHERE id = {PH} AND user_id = {PH}"
+    run_query(sql, (entry_id, user_id))
+
+
+def create_user(username, password_hash):
+    """Insert a new user. Returns the new user's id."""
+    sql = f"""
+        INSERT INTO users (username, password_hash)
+        VALUES ({PH}, {PH})
+        RETURNING id
+    """
+    row = run_query(sql, (username, password_hash), fetch="one")
+    return row["id"]
+
+
+def get_user_by_username(username):
+    """Return a user row, or None if no such username exists."""
+    sql = f"SELECT id, username, password_hash FROM users WHERE username = {PH}"
+    return run_query(sql, (username,), fetch="one")
