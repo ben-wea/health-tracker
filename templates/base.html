@@ -10,8 +10,15 @@
   <header>
     <h1>Health Tracker</h1>
     <nav>
-      <a href="{{ url_for('index') }}">Today</a>   
-      <a href="{{ url_for('summary') }}">Summary</a> 
+      {% if session.get("user_id") %}
+        <a class="pill pill-today {% if request.endpoint == 'index' %}is-active{% endif %}"
+           href="{{ url_for('index') }}">Today</a>
+        <a class="pill pill-summary {% if request.endpoint == 'summary' %}is-active{% endif %}"
+           href="{{ url_for('summary') }}">Summary</a>
+        <form method="post" action="{{ url_for('logout') }}" class="logout-form">
+          <button type="submit" class="pill">Log out</button>
+        </form>
+      {% endif %}
     </nav>
   </header>
   <main>

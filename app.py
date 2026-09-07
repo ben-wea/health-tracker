@@ -1,27 +1,86 @@
 import os
 from datetime import date
-
 from dotenv import load_dotenv
 from flask import (Flask, flash, jsonify, redirect, render_template,
-                   request, url_for)
-
+request, url_for)
 import db
 from usda import USDAError, search_foods
+from functools import wraps
+from flask import session
+from werkzeug.security import check_password_hash, generate_password_hash
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-only-insecure-key")
-db.init_db()
+db.reset_db()
 
 MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"]
 
+def login_required(view):
+    """Redirect anonymous users to the login page."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def current_user_id():
+    return session["user_id"]
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+
+        if len(username) < 3:
+            flash("Username needs at least 3 characters.", "error")
+        elif len(password) < 8:
+            flash("Password needs at least 8 characters.", "error")
+        elif db.get_user_by_username(username):
+            flash("That username is taken.", "error")
+        else:
+            user_id = db.create_user(username, generate_password_hash(password))
+            session["user_id"] = user_id
+            session["username"] = username
+            return redirect(url_for("index"))
+
+    return render_template("register.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        user = db.get_user_by_username(username)
+
+        if user and check_password_hash(user["password_hash"], password):
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            return redirect(url_for("index"))
+
+        flash("Incorrect username or password.", "error")
+
+    return render_template("login.html")
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
 
 @app.route("/")
+@login_required
 def index():
     log_date = request.args.get("date") or date.today().isoformat()
-    entries = db.get_meal_entries(log_date)
-    totals = db.get_daily_totals(log_date)
+    entries = db.get_meal_entries(current_user_id(), log_date)
+    totals = db.get_daily_totals(current_user_id(), log_date)
 
     entries_by_meal = {meal: [] for meal in MEAL_TYPES}
     for entry in entries:
@@ -37,6 +96,7 @@ def index():
 
 
 @app.route("/api/search")
+@login_required
 def api_search():
     query = request.args.get("q", "").strip()
     if not query:
@@ -49,10 +109,12 @@ def api_search():
 
 
 @app.route("/add", methods=["POST"])
+@login_required
 def add_entry():
     log_date = request.form.get("log_date") or date.today().isoformat()
     try:
         db.add_meal_entry(
+            current_user_id()
             log_date=log_date,
             meal_type=request.form["meal_type"],
             fdc_id=request.form.get("fdc_id") or None,
@@ -71,17 +133,19 @@ def add_entry():
 
 
 @app.route("/delete/<int:entry_id>", methods=["POST"])
+@login_required
 def delete_entry(entry_id):
     log_date = request.form.get("log_date") or date.today().isoformat()
-    db.delete_meal_entry(entry_id)
+    db.delete_meal_entry(current_user_id(), entry_id)
     flash("Entry deleted.", "success")
     return redirect(url_for("index", date=log_date))
 
 @app.route("/summary")
+@login_required
 def summary():
     days = request.args.get("days", 7, type=int)
     days = max(1, min(days, 30))
-    summaries = db.get_daily_summaries(days)
+    summaries = db.get_daily_summaries(current_user_id(), days)
 
     if summaries:
         avg = {
