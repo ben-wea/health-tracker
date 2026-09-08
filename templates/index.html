@@ -4,7 +4,9 @@
 
 {% block content %}
 <section class="totals">
-  <h2>{{ log_date }}</h2>
+  <form method="get" action="{{ url_for('index') }}" class="date-form">
+    <input type="date" name="date" value="{{ log_date }}" onchange="this.form.submit()">
+  </form>
   <ul class="macros">
     <li><span class="value">{{ "%.0f"|format(totals["calories"]) }}</span><span class="label">kcal</span></li>
     <li><span class="value">{{ "%.1f"|format(totals["protein"]) }}</span><span class="label">protein</span></li>

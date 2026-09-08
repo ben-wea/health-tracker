@@ -295,3 +295,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   opacity: 0.5;
   cursor: default;
 }
+
+.date-form { margin: 0 0 1.25rem; }
+.date-form input {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
