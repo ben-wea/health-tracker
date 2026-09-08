@@ -306,3 +306,5 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   border: 1px solid var(--border);
   border-radius: 8px;
 }
+
+.result-macros { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }

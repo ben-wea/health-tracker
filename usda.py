@@ -10,7 +10,6 @@ SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
 
 # USDA nutrient numbers are stable identifiers; names vary between entries.
 NUTRIENT_NUMBERS = {
-    "208": "calories",
     "203": "protein",
     "205": "carbs",
     "204": "fat",
@@ -21,18 +20,39 @@ class USDAError(Exception):
     """Raised when the USDA API cannot be reached or returns bad data."""
 
 
+KJ_PER_KCAL = 4.184
+
+# Energy is reported under different nutrient numbers depending on the dataset.
+# Preference order: measured kcal, Atwater specific, Atwater general, kJ.
+ENERGY_NUMBERS = ["208", "958", "957"]
+
+
 def _extract_nutrients(food):
     """Pull the four nutrients we care about out of a USDA food object.
 
-    Returns a dict with calories/protein/carbs/fat, defaulting to 0.0
-    for any nutrient the API did not report.
+    Foundation foods report energy as Atwater factors (957/958) rather than
+    nutrient 208, and some entries give only kilojoules (268).
     """
     nutrients = {"calories": 0.0, "protein": 0.0, "carbs": 0.0, "fat": 0.0}
+    energy = {}
+
     for item in food.get("foodNutrients", []):
         number = str(item.get("nutrientNumber", ""))
+        value = float(item.get("value") or 0.0)
+
         if number in NUTRIENT_NUMBERS:
-            key = NUTRIENT_NUMBERS[number]
-            nutrients[key] = float(item.get("value") or 0.0)
+            nutrients[NUTRIENT_NUMBERS[number]] = value
+        elif number in ENERGY_NUMBERS or number == "268":
+            energy[number] = value
+
+    for number in ENERGY_NUMBERS:
+        if energy.get(number):
+            nutrients["calories"] = energy[number]
+            break
+    else:
+        if energy.get("268"):
+            nutrients["calories"] = round(energy["268"] / KJ_PER_KCAL, 1)
+
     return nutrients
 
 

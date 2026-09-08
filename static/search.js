@@ -61,7 +61,9 @@ function renderResult(food) {
 
   const macros = document.createElement("span");
   macros.className = "result-macros";
-  macros.textContent = `${Math.round(food.calories_per_100g)} kcal / 100g`;
+  macros.textContent = food.calories_per_100g
+    ? `${Math.round(food.calories_per_100g)} kcal / 100g`
+    : "no calorie data";
 
   li.append(name, macros);
   li.addEventListener("click", () => selectFood(food));
