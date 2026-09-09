@@ -7,13 +7,15 @@ A web app for logging meals with real nutrition data and tracking daily macros.
 
 The free Render instance sleeps after 15 minutes of inactivity, so the first load may take up to a minute.
 
-![Day view](![alt text](image.png)
+Day
+(image.png)
 
 ## What it does
 
 Search the USDA FoodData Central database, log a food by weight, and see calories and macros for the day broken out by meal. A summary view aggregates the last several days. Accounts are separate — each user sees only their own log.
 
-![Summary](![alt text](image-2.png))
+Summary
+(image-2.png)
 
 ## Stack
 
